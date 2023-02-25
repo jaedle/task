@@ -18,7 +18,7 @@ type Output interface {
 	WrapWriter(stdOut, stdErr io.Writer, prefix string, tmpl Templater) (io.Writer, io.Writer, CloseFunc)
 }
 
-type CloseFunc func() error
+type CloseFunc func(errored bool) error
 
 // Build the Output for the requested taskfile.Output.
 func BuildFor(o *taskfile.Output) (Output, error) {
@@ -32,6 +32,12 @@ func BuildFor(o *taskfile.Output) (Output, error) {
 		return Group{
 			Begin: o.Group.Begin,
 			End:   o.Group.End,
+		}, nil
+	case "group_error_only":
+		return Group{
+			Begin:     o.Group.Begin,
+			End:       o.Group.End,
+			ErrorOnly: true,
 		}, nil
 	case "prefixed":
 		if err := checkOutputGroupUnset(o); err != nil {

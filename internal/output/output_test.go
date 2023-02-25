@@ -38,7 +38,7 @@ func TestGroup(t *testing.T) {
 	fmt.Fprintln(stdErr, "err")
 	assert.Equal(t, "", b.String())
 
-	assert.NoError(t, cleanup())
+	assert.NoError(t, cleanup(false))
 	assert.Equal(t, "out\nout\nerr\nerr\nout\nerr\n", b.String())
 }
 
@@ -64,13 +64,13 @@ func TestGroupWithBeginEnd(t *testing.T) {
 		assert.Equal(t, "", b.String())
 		fmt.Fprintln(w, "baz")
 		assert.Equal(t, "", b.String())
-		assert.NoError(t, cleanup())
+		assert.NoError(t, cleanup(false))
 		assert.Equal(t, "::group::example-value\nfoo\nbar\nbaz\n::endgroup::\n", b.String())
 	})
 	t.Run("no output", func(t *testing.T) {
 		var b bytes.Buffer
 		var _, _, cleanup = o.WrapWriter(&b, io.Discard, "", &tmpl)
-		assert.NoError(t, cleanup())
+		assert.NoError(t, cleanup(false))
 		assert.Equal(t, "", b.String())
 	})
 }
@@ -87,7 +87,7 @@ func TestPrefixed(t *testing.T) {
 		assert.Equal(t, "[prefix] foo\n[prefix] bar\n", b.String())
 		fmt.Fprintln(w, "baz")
 		assert.Equal(t, "[prefix] foo\n[prefix] bar\n[prefix] baz\n", b.String())
-		assert.NoError(t, cleanup())
+		assert.NoError(t, cleanup(false))
 	})
 
 	t.Run("multiple writes for a single line", func(t *testing.T) {
@@ -98,7 +98,42 @@ func TestPrefixed(t *testing.T) {
 			assert.Equal(t, "", b.String())
 		}
 
-		assert.NoError(t, cleanup())
+		assert.NoError(t, cleanup(false))
 		assert.Equal(t, "[prefix] Test!\n", b.String())
 	})
+}
+
+func TestGroupErrorOnlySwallowsOutputOnNoError(t *testing.T) {
+	var b bytes.Buffer
+	var o output.Output = output.Group{ErrorOnly: true}
+	var stdOut, stdErr, cleanup = o.WrapWriter(&b, io.Discard, "", nil)
+
+	fmt.Fprintln(stdOut, "out\nout")
+	assert.Equal(t, "", b.String())
+	fmt.Fprintln(stdErr, "err\nerr")
+	assert.Equal(t, "", b.String())
+	fmt.Fprintln(stdOut, "out")
+	assert.Equal(t, "", b.String())
+	fmt.Fprintln(stdErr, "err")
+	assert.Equal(t, "", b.String())
+
+	assert.NoError(t, cleanup(false))
+	assert.Empty(t, b.String())
+}
+func TestGroupErrorOnlyShowsOutputOnError(t *testing.T) {
+	var b bytes.Buffer
+	var o output.Output = output.Group{ErrorOnly: true}
+	var stdOut, stdErr, cleanup = o.WrapWriter(&b, io.Discard, "", nil)
+
+	fmt.Fprintln(stdOut, "out\nout")
+	assert.Equal(t, "", b.String())
+	fmt.Fprintln(stdErr, "err\nerr")
+	assert.Equal(t, "", b.String())
+	fmt.Fprintln(stdOut, "out")
+	assert.Equal(t, "", b.String())
+	fmt.Fprintln(stdErr, "err")
+	assert.Equal(t, "", b.String())
+
+	assert.NoError(t, cleanup(true))
+	assert.Equal(t, "out\nout\nerr\nerr\nout\nerr\n", b.String())
 }

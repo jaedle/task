@@ -282,8 +282,9 @@ func (e *Executor) runCommand(ctx context.Context, t *taskfile.Task, call taskfi
 			return fmt.Errorf("task: failed to get variables: %w", err)
 		}
 		stdOut, stdErr, close := outputWrapper.WrapWriter(e.Stdout, e.Stderr, t.Prefix, outputTemplater)
+		var errored bool = false
 		defer func() {
-			if err := close(); err != nil {
+			if err := close(errored); err != nil {
 				e.Logger.Errf(logger.Red, "task: unable to close writer: %v", err)
 			}
 		}()
@@ -298,6 +299,10 @@ func (e *Executor) runCommand(ctx context.Context, t *taskfile.Task, call taskfi
 			Stdout:    stdOut,
 			Stderr:    stdErr,
 		})
+		if execext.IsExitError(err) {
+			errored = true
+		}
+
 		if execext.IsExitError(err) && cmd.IgnoreError {
 			e.Logger.VerboseErrf(logger.Yellow, "task: [%s] command error ignored: %v", t.Name(), err)
 			return nil

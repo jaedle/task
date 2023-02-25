@@ -7,6 +7,7 @@ import (
 
 type Group struct {
 	Begin, End string
+	ErrorOnly  bool
 }
 
 func (g Group) WrapWriter(stdOut, _ io.Writer, _ string, tmpl Templater) (io.Writer, io.Writer, CloseFunc) {
@@ -17,7 +18,13 @@ func (g Group) WrapWriter(stdOut, _ io.Writer, _ string, tmpl Templater) (io.Wri
 	if g.End != "" {
 		gw.end = tmpl.Replace(g.End) + "\n"
 	}
-	return gw, gw, func() error { return gw.close() }
+	return gw, gw, func(errored bool) error {
+		if g.ErrorOnly && !errored {
+			gw.buff.Reset()
+		}
+
+		return gw.close()
+	}
 }
 
 type groupWriter struct {
